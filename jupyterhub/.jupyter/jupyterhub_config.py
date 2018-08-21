@@ -2,6 +2,8 @@ import os
 
 c.KubeSpawner.cmd = ['/usr/libexec/s2i/run']
 
+c.KubeSpawner.pod_name_template = '%s-frontend-{username}' % c.KubeSpawner.hub_connect_ip
+
 # Override URL prefix for front end instance.
 
 def modify_pod_hook(spawner, pod):
