@@ -16,6 +16,8 @@ c.KubeSpawner.pod_name_template = '%s-frontend-{username}' % (
 
 c.KubeSpawner.common_labels = { 'app': spawner_name }
 
+c.Spawner.mem_limit = convert_size_to_bytes('256Mi')
+
 # Override URL prefix for front end instance and link to the back end.
 
 from openshift import client, config
