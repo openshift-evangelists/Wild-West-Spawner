@@ -1,6 +1,6 @@
 import os
 
-c.KubeSpawner.cmd = ['/tmp/scripts/run']
+c.KubeSpawner.cmd = ['/usr/libexec/s2i/run']
 
 # Setup location for customised template files.
 

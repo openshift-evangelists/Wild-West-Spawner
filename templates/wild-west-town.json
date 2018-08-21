@@ -221,7 +221,7 @@
                                     },
                                     {
                                         "name": "JUPYTERHUB_NOTEBOOK_IMAGE",
-                                        "value": "${SPAWNER_NAME}-app:latest"
+                                        "value": "${SPAWNER_NAME}-frontend:latest"
                                     },
                                     {
                                         "name": "JUPYTERHUB_IDLE_TIMEOUT",
@@ -299,7 +299,7 @@
             "kind": "ImageStream",
             "apiVersion": "v1",
             "metadata": {
-                "name": "${SPAWNER_NAME}-app",
+                "name": "${SPAWNER_NAME}-frontend",
                 "labels": {
                     "app": "${SPAWNER_NAME}"
                 }
@@ -309,7 +309,7 @@
             "kind": "BuildConfig",
             "apiVersion": "v1",
             "metadata": {
-                "name": "${SPAWNER_NAME}-app",
+                "name": "${SPAWNER_NAME}-frontend",
                 "labels": {
                     "app": "${SPAWNER_NAME}"
                 }
@@ -326,7 +326,7 @@
                 "source": {
                     "type": "Git",
                     "git": {
-                        "uri": "https://github.com/openshift-katacoda/blog-django-py"
+                        "uri": "https://github.com/openshift-evangelists/Wild-West-Frontend"
                     }
                 },
                 "strategy": {
@@ -334,7 +334,7 @@
                     "sourceStrategy": {
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "python:3.5",
+                            "name": "nodejs:10",
                             "namespace": "openshift"
                         }
                     }
@@ -342,7 +342,7 @@
                 "output": {
                     "to": {
                         "kind": "ImageStreamTag",
-                        "name": "${SPAWNER_NAME}-app:latest"
+                        "name": "${SPAWNER_NAME}-frontend:latest"
                     }
                 }
             }
