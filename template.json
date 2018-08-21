@@ -15,7 +15,7 @@
         },
         {
             "name": "IDLE_TIMEOUT",
-            "value": "600"
+            "value": "300"
         }
     ],
     "objects": [
