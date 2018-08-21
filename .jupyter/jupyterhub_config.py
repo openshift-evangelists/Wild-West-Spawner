@@ -4,6 +4,8 @@ import os
 
 spawner_name = os.environ.get('SPAWNER_NAME')
 
+c.KubeSpawner.hub_connect_ip = spawner_name
+
 c.KubeSpawner.singleuser_image_spec = os.environ.get(
         'FRONTEND_IMAGE', 'wild-west-frontend:latest')
 
@@ -31,7 +33,7 @@ def extract_hostname(routes, name):
         if route.metadata.name == name:
             return route.spec.host
 
-route_hostname = extract_hostname(routes, spawner_name)
+route_hostname = extract_hostname(routes, '%s-backend' % spawner_name)
 
 def modify_pod_hook(spawner, pod):
     pod.spec.containers[0].env.append(dict(name='URL_PREFIX',
