@@ -1,0 +1,351 @@
+{
+    "kind": "Template",
+    "apiVersion": "v1",
+    "metadata": {
+        "name": "wild-west-town",
+        "annotations": {
+            "openshift.io/display-name": "Wild West Town"
+        }
+    },
+    "parameters": [
+        {
+            "name": "SPAWNER_NAME",
+            "value": "wild-west-town",
+            "required": true
+        },
+        {
+            "name": "IDLE_TIMEOUT",
+            "value": "120"
+        },
+        {
+            "name": "COOKIE_SECRET",
+            "generate": "expression",
+            "from": "[a-f0-9]{32}",
+            "required": true
+        }
+    ],
+    "objects": [
+        {
+            "kind": "ServiceAccount",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-hub",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            }
+        },
+        {
+            "kind": "RoleBinding",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-edit",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "${SPAWNER_NAME}-hub"
+                }
+            ],
+            "roleRef": {
+                "name": "edit"
+            }
+        },
+        {
+            "kind": "ImageStream",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-hub-s2i",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            }
+        },
+        {
+            "kind": "BuildConfig",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-hub-s2i",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            },
+            "spec": {
+                "triggers": [
+                    {
+                        "type": "ConfigChange"
+                    },
+                    {
+                        "type": "ImageChange"
+                    }
+                ],
+                "source": {
+                    "type": "Git",
+                    "git": {
+                        "uri": "https://github.com/jupyter-on-openshift/jupyterhub-quickstart.git"
+                    }
+                },
+                "strategy": {
+                    "type": "Source",
+                    "sourceStrategy": {
+                        "from": {
+                            "kind": "ImageStreamTag",
+                            "name": "python:3.5",
+                            "namespace": "openshift"
+                        }
+                    }
+                },
+                "output": {
+                    "to": {
+                        "kind": "ImageStreamTag",
+                        "name": "${SPAWNER_NAME}-hub-s2i:latest"
+                    }
+                }
+            }
+        },
+        {
+            "kind": "ImageStream",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-hub-img",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            }
+        },
+
+        {
+            "kind": "BuildConfig",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-hub-img",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            },
+            "spec": {
+                "triggers": [
+                    {
+                        "type": "ConfigChange"
+                    },
+                    {
+                        "type": "ImageChange"
+                    }
+                ],
+                "source": {
+                    "type": "Git",
+                    "git": {
+                        "uri": "https://github.com/GrahamDumpleton/wildwest-multi-user.git"
+                    },
+                    "contextDir": "jupyterhub"
+                },
+                "strategy": {
+                    "type": "Source",
+                    "sourceStrategy": {
+                        "from": {
+                            "kind": "ImageStreamTag",
+                            "name": "${SPAWNER_NAME}-hub-s2i:latest"
+                        }
+                    }
+                },
+                "output": {
+                    "to": {
+                        "kind": "ImageStreamTag",
+                        "name": "${SPAWNER_NAME}-hub-img:latest"
+                    }
+                }
+            }
+        },
+        {
+            "kind": "DeploymentConfig",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            },
+            "spec": {
+                "strategy": {
+                    "type": "Recreate"
+                },
+                "triggers": [
+                    {
+                        "type": "ConfigChange"
+                    },
+                    {
+                        "type": "ImageChange",
+                        "imageChangeParams": {
+                            "automatic": true,
+                            "containerNames": [
+                                "jupyterhub"
+                            ],
+                            "from": {
+                                "kind": "ImageStreamTag",
+                                "name": "${SPAWNER_NAME}-hub-img:latest"
+                            }
+                        }
+                    }
+                ],
+                "replicas": 1,
+                "selector": {
+                    "app": "${SPAWNER_NAME}",
+                    "deploymentconfig": "${SPAWNER_NAME}"
+                },
+                "template": {
+                    "metadata": {
+                        "labels": {
+                            "app": "${SPAWNER_NAME}",
+                            "deploymentconfig": "${SPAWNER_NAME}"
+                        }
+                    },
+                    "spec": {
+                        "serviceAccountName": "${SPAWNER_NAME}-hub",
+                        "containers": [
+                            {
+                                "name": "jupyterhub",
+                                "image": "${JUPYTERHUB_IMAGE}",
+                                "ports": [
+                                    {
+                                        "containerPort": 8080,
+                                        "protocol": "TCP"
+                                    }
+                                ],
+                                "env": [
+                                    {
+                                        "name": "JUPYTERHUB_SERVICE_NAME",
+                                        "value": "${SPAWNER_NAME}"
+                                    },
+                                    {
+                                        "name": "JUPYTERHUB_NOTEBOOK_IMAGE",
+                                        "value": "${SPAWNER_NAME}-app:latest"
+                                    },
+                                    {
+                                        "name": "JUPYTERHUB_IDLE_TIMEOUT",
+                                        "value": "${IDLE_TIMEOUT}"
+                                    },
+                                    {
+                                        "name": "JUPYTERHUB_COOKIE_SECRET",
+                                        "value": "${COOKIE_SECRET}"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "kind": "Service",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            },
+            "spec": {
+                "ports": [
+                    {
+                        "name": "8080-tcp",
+                        "protocol": "TCP",
+                        "port": 8080,
+                        "targetPort": 8080
+                    },
+                    {
+                        "name": "8081-tcp",
+                        "protocol": "TCP",
+                        "port": 8081,
+                        "targetPort": 8081
+                    }
+                ],
+                "selector": {
+                    "app": "${SPAWNER_NAME}",
+                    "deploymentconfig": "${SPAWNER_NAME}"
+                }
+            }
+        },
+        {
+            "kind": "Route",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                },
+                "annotations": {
+                    "haproxy.router.openshift.io/hsts_header": "max-age=31536000;includeSubDomains"
+                }
+            },
+            "spec": {
+                "host": "",
+                "to": {
+                    "kind": "Service",
+                    "name": "${SPAWNER_NAME}",
+                    "weight": 100
+                },
+                "port": {
+                    "targetPort": "8080-tcp"
+                },
+                "tls": {
+                    "termination": "edge"
+                }
+            }
+        },
+        {
+            "kind": "ImageStream",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-app",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            }
+        },
+        {
+            "kind": "BuildConfig",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-app",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            },
+            "spec": {
+                "triggers": [
+                    {
+                        "type": "ConfigChange"
+                    },
+                    {
+                        "type": "ImageChange"
+                    }
+                ],
+                "source": {
+                    "type": "Git",
+                    "git": {
+                        "uri": "https://github.com/openshift-katacoda/blog-django-py"
+                    }
+                },
+                "strategy": {
+                    "type": "Source",
+                    "sourceStrategy": {
+                        "from": {
+                            "kind": "ImageStreamTag",
+                            "name": "python:3.5",
+                            "namespace": "openshift"
+                        }
+                    }
+                },
+                "output": {
+                    "to": {
+                        "kind": "ImageStreamTag",
+                        "name": "${SPAWNER_NAME}-app:latest"
+                    }
+                }
+            }
+        }
+    ]
+}
