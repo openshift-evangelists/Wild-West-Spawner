@@ -2,6 +2,8 @@ import os
 
 # Override image details with that of the front end.
 
+spawner_name = os.environ.get('SPAWNER_NAME')
+
 c.KubeSpawner.singleuser_image_spec = os.environ.get(
         'FRONTEND_IMAGE', 'wild-west-frontend:latest')
 
@@ -9,6 +11,8 @@ c.KubeSpawner.cmd = ['/usr/libexec/s2i/run']
 
 c.KubeSpawner.pod_name_template = '%s-frontend-{username}' % (
         c.KubeSpawner.hub_connect_ip)
+
+c.KubeSpawner.common_labels = { 'app': spawner_name }
 
 # Override URL prefix for front end instance and link to the back end.
 
@@ -27,8 +31,7 @@ def extract_hostname(routes, name):
         if route.metadata.name == name:
             return route.spec.host
 
-route_name = os.environ.get('ROUTE_NAME')
-route_hostname = extract_hostname(routes, route_name)
+route_hostname = extract_hostname(routes, spawner_name)
 
 def modify_pod_hook(spawner, pod):
     pod.spec.containers[0].env.append(dict(name='URL_PREFIX',
