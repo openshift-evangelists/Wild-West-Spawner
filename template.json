@@ -161,7 +161,7 @@
                 "source": {
                     "type": "Git",
                     "git": {
-                        "uri": "https://github.com/GrahamDumpleton/Wild-West-Spawner.git"
+                        "uri": "https://github.com/openshift-evangelists/Wild-West-Spawner.git"
                     }
                 },
                 "strategy": {
