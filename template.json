@@ -2,26 +2,20 @@
     "kind": "Template",
     "apiVersion": "v1",
     "metadata": {
-        "name": "wild-west-town",
+        "name": "wild-west-spanwer",
         "annotations": {
-            "openshift.io/display-name": "Wild West Town"
+            "openshift.io/display-name": "Wild West Spawnwer"
         }
     },
     "parameters": [
         {
             "name": "SPAWNER_NAME",
-            "value": "wild-west-town",
+            "value": "wild-west",
             "required": true
         },
         {
             "name": "IDLE_TIMEOUT",
-            "value": "120"
-        },
-        {
-            "name": "COOKIE_SECRET",
-            "generate": "expression",
-            "from": "[a-f0-9]{32}",
-            "required": true
+            "value": "600"
         }
     ],
     "objects": [
@@ -87,7 +81,7 @@
             "kind": "ImageStream",
             "apiVersion": "v1",
             "metadata": {
-                "name": "${SPAWNER_NAME}-hub-s2i",
+                "name": "${SPAWNER_NAME}-spawner-s2i",
                 "labels": {
                     "app": "${SPAWNER_NAME}"
                 }
@@ -97,7 +91,7 @@
             "kind": "BuildConfig",
             "apiVersion": "v1",
             "metadata": {
-                "name": "${SPAWNER_NAME}-hub-s2i",
+                "name": "${SPAWNER_NAME}-spawner-s2i",
                 "labels": {
                     "app": "${SPAWNER_NAME}"
                 }
@@ -130,7 +124,7 @@
                 "output": {
                     "to": {
                         "kind": "ImageStreamTag",
-                        "name": "${SPAWNER_NAME}-hub-s2i:latest"
+                        "name": "${SPAWNER_NAME}-spawner-s2i:latest"
                     }
                 }
             }
@@ -139,7 +133,7 @@
             "kind": "ImageStream",
             "apiVersion": "v1",
             "metadata": {
-                "name": "${SPAWNER_NAME}-hub-img",
+                "name": "${SPAWNER_NAME}-spawner-img",
                 "labels": {
                     "app": "${SPAWNER_NAME}"
                 }
@@ -150,7 +144,7 @@
             "kind": "BuildConfig",
             "apiVersion": "v1",
             "metadata": {
-                "name": "${SPAWNER_NAME}-hub-img",
+                "name": "${SPAWNER_NAME}-spawner-img",
                 "labels": {
                     "app": "${SPAWNER_NAME}"
                 }
@@ -167,23 +161,22 @@
                 "source": {
                     "type": "Git",
                     "git": {
-                        "uri": "https://github.com/GrahamDumpleton/wildwest-multi-user.git"
-                    },
-                    "contextDir": "jupyterhub"
+                        "uri": "https://github.com/GrahamDumpleton/Wild-West-Spawner.git"
+                    }
                 },
                 "strategy": {
                     "type": "Source",
                     "sourceStrategy": {
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "${SPAWNER_NAME}-hub-s2i:latest"
+                            "name": "${SPAWNER_NAME}-spawner-s2i:latest"
                         }
                     }
                 },
                 "output": {
                     "to": {
                         "kind": "ImageStreamTag",
-                        "name": "${SPAWNER_NAME}-hub-img:latest"
+                        "name": "${SPAWNER_NAME}-spawner-img:latest"
                     }
                 }
             }
@@ -210,11 +203,11 @@
                         "imageChangeParams": {
                             "automatic": true,
                             "containerNames": [
-                                "jupyterhub"
+                                "spawner"
                             ],
                             "from": {
                                 "kind": "ImageStreamTag",
-                                "name": "${SPAWNER_NAME}-hub-img:latest"
+                                "name": "${SPAWNER_NAME}-spawner-img:latest"
                             }
                         }
                     }
@@ -235,8 +228,7 @@
                         "serviceAccountName": "${SPAWNER_NAME}-edit",
                         "containers": [
                             {
-                                "name": "jupyterhub",
-                                "image": "${JUPYTERHUB_IMAGE}",
+                                "name": "spawner",
                                 "ports": [
                                     {
                                         "containerPort": 8080,
@@ -245,20 +237,16 @@
                                 ],
                                 "env": [
                                     {
-                                        "name": "JUPYTERHUB_SERVICE_NAME",
+                                        "name": "SPAWNER_NAME",
                                         "value": "${SPAWNER_NAME}"
                                     },
                                     {
-                                        "name": "JUPYTERHUB_NOTEBOOK_IMAGE",
+                                        "name": "FRONTEND_IMAGE",
                                         "value": "${SPAWNER_NAME}-frontend:latest"
                                     },
                                     {
-                                        "name": "JUPYTERHUB_IDLE_TIMEOUT",
+                                        "name": "IDLE_TIMEOUT",
                                         "value": "${IDLE_TIMEOUT}"
-                                    },
-                                    {
-                                        "name": "JUPYTERHUB_COOKIE_SECRET",
-                                        "value": "${COOKIE_SECRET}"
                                     }
                                 ]
                             }
@@ -304,9 +292,6 @@
                 "name": "${SPAWNER_NAME}",
                 "labels": {
                     "app": "${SPAWNER_NAME}"
-                },
-                "annotations": {
-                    "haproxy.router.openshift.io/hsts_header": "max-age=31536000;includeSubDomains"
                 }
             },
             "spec": {
@@ -318,9 +303,6 @@
                 },
                 "port": {
                     "targetPort": "8080-tcp"
-                },
-                "tls": {
-                    "termination": "edge"
                 }
             }
         },
@@ -363,7 +345,7 @@
                     "sourceStrategy": {
                         "from": {
                             "kind": "ImageStreamTag",
-                            "name": "wildfly:13.0",
+                            "name": "java:8",
                             "namespace": "openshift"
                         }
                     }
@@ -398,7 +380,7 @@
                         "imageChangeParams": {
                             "automatic": true,
                             "containerNames": [
-                                "jupyterhub"
+                                "backend"
                             ],
                             "from": {
                                 "kind": "ImageStreamTag",
@@ -423,7 +405,7 @@
                         "serviceAccountName": "${SPAWNER_NAME}-view",
                         "containers": [
                             {
-                                "name": "jupyterhub",
+                                "name": "backend",
                                 "ports": [
                                     {
                                         "containerPort": 8080,
