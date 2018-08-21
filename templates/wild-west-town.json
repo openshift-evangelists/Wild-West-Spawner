@@ -29,7 +29,36 @@
             "kind": "ServiceAccount",
             "apiVersion": "v1",
             "metadata": {
-                "name": "${SPAWNER_NAME}-hub",
+                "name": "${SPAWNER_NAME}-view",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            }
+        },
+        {
+            "kind": "RoleBinding",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-view",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "${SPAWNER_NAME}-view"
+                }
+            ],
+            "roleRef": {
+                "name": "edit"
+            }
+        },
+        {
+            "kind": "ServiceAccount",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-edit",
                 "labels": {
                     "app": "${SPAWNER_NAME}"
                 }
@@ -47,7 +76,7 @@
             "subjects": [
                 {
                     "kind": "ServiceAccount",
-                    "name": "${SPAWNER_NAME}-hub"
+                    "name": "${SPAWNER_NAME}-edit"
                 }
             ],
             "roleRef": {
@@ -203,7 +232,7 @@
                         }
                     },
                     "spec": {
-                        "serviceAccountName": "${SPAWNER_NAME}-hub",
+                        "serviceAccountName": "${SPAWNER_NAME}-edit",
                         "containers": [
                             {
                                 "name": "jupyterhub",
@@ -292,6 +321,142 @@
                 },
                 "tls": {
                     "termination": "edge"
+                }
+            }
+        },
+        {
+            "kind": "ImageStream",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-backend",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            }
+        },
+        {
+            "kind": "BuildConfig",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-backend",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            },
+            "spec": {
+                "triggers": [
+                    {
+                        "type": "ConfigChange"
+                    },
+                    {
+                        "type": "ImageChange"
+                    }
+                ],
+                "source": {
+                    "type": "Git",
+                    "git": {
+                        "uri": "https://github.com/openshift-evangelists/Wild-West-Backend"
+                    }
+                },
+                "strategy": {
+                    "type": "Source",
+                    "sourceStrategy": {
+                        "from": {
+                            "kind": "ImageStreamTag",
+                            "name": "wildfly:13.0",
+                            "namespace": "openshift"
+                        }
+                    }
+                },
+                "output": {
+                    "to": {
+                        "kind": "ImageStreamTag",
+                        "name": "${SPAWNER_NAME}-backend:latest"
+                    }
+                }
+            }
+        },
+        {
+            "kind": "DeploymentConfig",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-backend",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            },
+            "spec": {
+                "strategy": {
+                    "type": "Recreate"
+                },
+                "triggers": [
+                    {
+                        "type": "ConfigChange"
+                    },
+                    {
+                        "type": "ImageChange",
+                        "imageChangeParams": {
+                            "automatic": true,
+                            "containerNames": [
+                                "jupyterhub"
+                            ],
+                            "from": {
+                                "kind": "ImageStreamTag",
+                                "name": "${SPAWNER_NAME}-backend:latest"
+                            }
+                        }
+                    }
+                ],
+                "replicas": 1,
+                "selector": {
+                    "app": "${SPAWNER_NAME}",
+                    "deploymentconfig": "${SPAWNER_NAME}-backend"
+                },
+                "template": {
+                    "metadata": {
+                        "labels": {
+                            "app": "${SPAWNER_NAME}",
+                            "deploymentconfig": "${SPAWNER_NAME}-backend"
+                        }
+                    },
+                    "spec": {
+                        "serviceAccountName": "${SPAWNER_NAME}-view",
+                        "containers": [
+                            {
+                                "name": "jupyterhub",
+                                "ports": [
+                                    {
+                                        "containerPort": 8080,
+                                        "protocol": "TCP"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "kind": "Service",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${SPAWNER_NAME}-backend",
+                "labels": {
+                    "app": "${SPAWNER_NAME}"
+                }
+            },
+            "spec": {
+                "ports": [
+                    {
+                        "name": "8080-tcp",
+                        "protocol": "TCP",
+                        "port": 8080,
+                        "targetPort": 8080
+                    }
+                ],
+                "selector": {
+                    "app": "${SPAWNER_NAME}",
+                    "deploymentconfig": "${SPAWNER_NAME}-backend"
                 }
             }
         },
