@@ -20,28 +20,13 @@ c.Spawner.mem_limit = convert_size_to_bytes('256Mi')
 
 # Override URL prefix for front end instance and link to the back end.
 
-from openshift import client, config
-
-with open('/var/run/secrets/kubernetes.io/serviceaccount/namespace') as fp:
-    namespace = fp.read().strip()
-
-config.load_incluster_config()
-oapi = client.OapiApi()
-
-routes = oapi.list_namespaced_route(namespace)
-
-def extract_hostname(routes, name):
-    for route in routes.items:
-        if route.metadata.name == name:
-            return route.spec.host
-
-route_hostname = extract_hostname(routes, '%s-backend' % spawner_name)
-
 def modify_pod_hook(spawner, pod):
     pod.spec.containers[0].env.append(dict(name='URL_PREFIX',
-            value='/user/%s' % spawner.user.name))
+            value='/user/%s/' % spawner.user.name))
     pod.spec.containers[0].env.append(dict(name='BACKEND_SERVICE',
-            value='http://%s' % route_hostname))
+            value='%s-backend:8080' % spawner_name))
+    pod.spec.containers[0].env.append(dict(name='BACKEND_PATH',
+            value='/user/%s/ws' % spawner.user.name))
 
     return pod
 
